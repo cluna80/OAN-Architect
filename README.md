@@ -32,7 +32,7 @@ npm run dev
 
 **Prerequisites:**
 - Node.js 18+
-- Backend running on `localhost:8000` [([ObsidianArcadia](https://github.com/cluna80/ObsidianArcadia))](https://github.com/cluna80/Obsidian-Arcadia-Network)
+- Backend running on `localhost:8000` [ObsidianArcadia(https://github.com/cluna80/ObsidianArcadia))](https://github.com/cluna80/Obsidian-Arcadia-Network)
 - Ollama (optional, for AI reasoning)
 
 ## ��� Demo Templates
