@@ -1,4 +1,7 @@
-# í¾¨ OAN Architect
+
+<img width="1536" height="1024" alt="df55b630-e1ea-4745-abde-ca37a1aeb9f7" src="https://github.com/user-attachments/assets/fdd59f7a-9cba-40c1-9d84-bd620cdc908e" />
+
+# ï¿½ï¿½ï¿½ OAN Architect
 
 **Visual Platform for Building Autonomous AI Agents**
 
@@ -7,18 +10,18 @@ A powerful visual interface for creating, training, and managing AI agents power
 ![OAN Architect](https://img.shields.io/badge/version-1.0.6--beta-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-## í¾¯ Features
+## ï¿½ï¿½ï¿½ Features
 
-- í·  **Cognitive AI Agents** - LangGraph + Ollama powered reasoning
-- í²š **Emotion System** - 4 dynamic states (calm, greedy, fearful, aggressive)
+- ï¿½ï¿½ï¿½ **Cognitive AI Agents** - LangGraph + Ollama powered reasoning
+- ï¿½ï¿½ï¿½ **Emotion System** - 4 dynamic states (calm, greedy, fearful, aggressive)
 - âš¡ **Energy Constraints** - Prevents infinite agent actions
-- í³Š **Memory System** - Learns from last 10 trades
-- í²° **Unified Wallets** - Multi-agent balance sharing
-- í¾¨ **Visual Node Editor** - Drag-and-drop interface
-- í³ˆ **Live Trading Simulation** - Real-time market data
-- í´ **Agent Collaboration** - Multi-agent coordination
+- ï¿½ï¿½ï¿½ **Memory System** - Learns from last 10 trades
+- ï¿½ï¿½ï¿½ **Unified Wallets** - Multi-agent balance sharing
+- ï¿½ï¿½ï¿½ **Visual Node Editor** - Drag-and-drop interface
+- ï¿½ï¿½ï¿½ **Live Trading Simulation** - Real-time market data
+- ï¿½ï¿½ï¿½ **Agent Collaboration** - Multi-agent coordination
 
-## íº€ Quick Start
+## ï¿½ï¿½ï¿½ Quick Start
 ```bash
 # Install dependencies
 npm install
@@ -32,7 +35,7 @@ npm run dev
 - Backend running on `localhost:8000` ([ObsidianArcadia](https://github.com/cluna80/ObsidianArcadia))
 - Ollama (optional, for AI reasoning)
 
-## í³¦ Demo Templates
+## ï¿½ï¿½ï¿½ Demo Templates
 
 1. **Trading Demo** - Automated trading agents
 2. **Behavior Demo** - AI personalities & interactions
@@ -41,7 +44,7 @@ npm run dev
 5. **Coordination Demo** - Multi-agent tasks
 6. **Cognitive AI Trading** - Memory-based learning
 
-## í¿—ï¸ Architecture
+## ï¿½ï¿½ï¿½ï¸ Architecture
 ```
 React + TypeScript
     â†“
@@ -54,7 +57,7 @@ LangGraph + Ollama (AI)
 OAN Protocol (Rust)
 ```
 
-## í·  Cognitive AI System
+## ï¿½ï¿½ï¿½ Cognitive AI System
 
 - **Perception** - Observe market & self-state
 - **Reasoning** - Ollama AI analysis
@@ -62,16 +65,16 @@ OAN Protocol (Rust)
 - **Action** - Execute with energy cost
 - **Memory** - Record and learn
 
-## í´— Related
+## ï¿½ï¿½ï¿½ Related
 
 - **Backend:** [ObsidianArcadia](https://github.com/cluna80/ObsidianArcadia)
 - **Protocol:** OAN (Obsidian Arcadia Network)
 
-## í³„ License
+## ï¿½ï¿½ï¿½ License
 
 MIT License - see LICENSE file
 
-## í¾Š Version
+## ï¿½ï¿½ï¿½ Version
 
 **v1.0.6-beta** - Cognitive AI with Memory System
 
