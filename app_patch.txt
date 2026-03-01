@@ -1,0 +1,20 @@
+Add these lines to src/App.tsx:
+
+1. After line 23 (after TradingAgentNode import), add:
+   import { CognitiveAgentNode } from './components/nodes/CognitiveAgentNode';
+
+2. In the nodeTypes object (around line 27), add:
+   cognitiveAgent: CognitiveAgentNode,
+
+So it should look like:
+
+const nodeTypes = {
+  entity: EntityNode,
+  prompt: PromptNode,
+  relationship: RelationshipNode,
+  simConfig: SimConfigNode,
+  wallet: WalletNode,
+  marketData: MarketDataNode,
+  tradingAgent: TradingAgentNode,
+  cognitiveAgent: CognitiveAgentNode,  // <-- ADD THIS LINE
+};

@@ -1,0 +1,14 @@
+// Add to imports:
+import { CognitiveAgentNode } from './components/nodes/CognitiveAgentNode';
+
+// Update nodeTypes:
+const nodeTypes = {
+  entity: EntityNode,
+  prompt: PromptNode,
+  relationship: RelationshipNode,
+  simConfig: SimConfigNode,
+  wallet: WalletNode,
+  marketData: MarketDataNode,
+  tradingAgent: TradingAgentNode,
+  cognitiveAgent: CognitiveAgentNode,  // NEW!
+};

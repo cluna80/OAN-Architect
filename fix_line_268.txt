@@ -1,0 +1,7 @@
+Find line 268 in ChatPanel.tsx:
+
+OLD:
+  ({turn.stats.wins}W-{turn.stats.losses}L, {turn.stats.confidence:.0%})
+
+NEW:
+  ({turn.stats.wins}W-{turn.stats.losses}L, {Math.round(turn.stats.confidence * 100)}%)

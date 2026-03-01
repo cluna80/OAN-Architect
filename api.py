@@ -1,0 +1,228 @@
+
+# ============================================================================
+# LANGGRAPH COGNITIVE INTELLIGENCE INTEGRATION
+# ============================================================================
+
+import sys
+from pathlib import Path
+
+# Add oan_ai to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "ObsidianArcadia"))
+
+try:
+    from oan_ai.cognitive_engine import run_cognitive_cycle, create_cognitive_graph
+    from oan_ai.emotion_system import EmotionSystem, Emotion
+    from oan_ai.energy_system import EnergySystem
+    from oan_ai.market_environment import MarketEnvironment
+    COGNITIVE_AVAILABLE = True
+    print("✅ LangGraph Cognitive Layer loaded")
+except ImportError as e:
+    print(f"⚠️  Cognitive layer not available: {e}")
+    COGNITIVE_AVAILABLE = False
+
+# Global cognitive resources
+cognitive_graphs = {}  # Cache LangGraph instances per entity
+emotion_systems = {}   # Emotion state per entity
+energy_systems = {}    # Energy state per entity
+market_env = MarketEnvironment() if COGNITIVE_AVAILABLE else None
+
+class CognitiveDecisionRequest(BaseModel):
+    entity_id: str
+    market_state: Optional[Dict] = None
+    use_llm: bool = True
+
+class EmotionUpdateRequest(BaseModel):
+    entity_id: str
+    profit: float
+    win_rate: float
+    volatility: float = 0.02
+
+@app.post("/cognitive/decision")
+async def cognitive_decision(data: CognitiveDecisionRequest):
+    """
+    Get AI-powered decision using LangGraph cognitive engine
+    
+    Uses Ollama for reasoning about market conditions
+    """
+    if not COGNITIVE_AVAILABLE:
+        return {"error": "Cognitive layer not available"}
+    
+    if data.entity_id not in active_entities:
+        return {"error": "Entity not found"}
+    
+    entity_data = active_entities[data.entity_id]
+    
+    # Get or create energy system
+    if data.entity_id not in energy_systems:
+        energy_systems[data.entity_id] = EnergySystem()
+    
+    energy = energy_systems[data.entity_id]
+    
+    # Check energy
+    if not energy.can_afford("analyze"):
+        return {
+            "action": "rest",
+            "reasoning": "Insufficient energy - must rest",
+            "energy": energy.get_status(),
+            "emotion": emotion_systems.get(data.entity_id, "calm")
+        }
+    
+    # Get or create emotion system
+    if data.entity_id not in emotion_systems:
+        emotion_systems[data.entity_id] = EmotionSystem()
+    
+    emotion = emotion_systems[data.entity_id]
+    
+    # Prepare entity state for cognitive engine
+    market_state = data.market_state or market_env.get_state_dict()
+    
+    entity_state = {
+        "entity_id": data.entity_id,
+        "name": entity_data["name"],
+        "strength": 60.0,
+        "agility": 55.0,
+        "stamina": 65.0,
+        "skill": 58.0,
+        "energy": energy.current_energy,
+        "emotion": emotion.current_emotion.value,
+        "confidence": entity_data.get("confidence", 0.5),
+        "wallet": 10000.0,
+        "position": None,
+        "market_state": market_state,
+        "recent_observations": [],
+        "internal_reasoning": [],
+        "planned_action": "",
+        "action_result": {},
+        "wins": entity_data.get("wins", 0),
+        "losses": entity_data.get("losses", 0),
+        "experience": entity_data.get("experience", 0)
+    }
+    
+    try:
+        if data.use_llm:
+            # Use full LangGraph with Ollama
+            if data.entity_id not in cognitive_graphs:
+                cognitive_graphs[data.entity_id] = create_cognitive_graph()
+            
+            graph = cognitive_graphs[data.entity_id]
+            result = graph.invoke(entity_state)
+            
+            # Consume energy
+            energy.consume_energy("analyze")
+            
+            # Parse action
+            import json
+            action_data = json.loads(result.get("planned_action", "{}"))
+            
+            print(f"[COGNITIVE] {entity_data['name']}: {action_data.get('action')} (emotion: {emotion.current_emotion.value})")
+            
+            return {
+                "action": action_data.get("action", "hold"),
+                "amount": action_data.get("amount", 0.0),
+                "reasoning": result.get("internal_reasoning", ["AI reasoning"])[0] if result.get("internal_reasoning") else "Strategic decision",
+                "emotion": emotion.current_emotion.value,
+                "energy": energy.get_status(),
+                "confidence": result.get("confidence", 0.5)
+            }
+        else:
+            # Simple rule-based
+            emotion_val = emotion.current_emotion.value
+            
+            if emotion_val == "greedy":
+                action = "buy"
+                reasoning = "Feeling greedy - looking for opportunities"
+            elif emotion_val == "fearful":
+                action = "hold"
+                reasoning = "Feeling fearful - preserving capital"
+            elif emotion_val == "aggressive":
+                action = "buy"
+                reasoning = "Aggressive stance - taking action"
+            else:
+                action = "hold"
+                reasoning = "Calm analysis - waiting for signal"
+            
+            energy.consume_energy("analyze")
+            
+            return {
+                "action": action,
+                "amount": 0.3,
+                "reasoning": reasoning,
+                "emotion": emotion_val,
+                "energy": energy.get_status()
+            }
+            
+    except Exception as e:
+        print(f"[COGNITIVE ERROR] {entity_data['name']}: {e}")
+        return {
+            "error": str(e),
+            "action": "hold",
+            "reasoning": f"Error in cognitive processing: {str(e)}"
+        }
+
+@app.post("/cognitive/emotion/update")
+async def update_emotion(data: EmotionUpdateRequest):
+    """Update entity emotion based on performance"""
+    if not COGNITIVE_AVAILABLE:
+        return {"error": "Cognitive layer not available"}
+    
+    # Get or create emotion system
+    if data.entity_id not in emotion_systems:
+        emotion_systems[data.entity_id] = EmotionSystem()
+    
+    emotion = emotion_systems[data.entity_id]
+    
+    # Update emotion
+    new_emotion = emotion.update_emotion(
+        profit=data.profit,
+        market_volatility=data.volatility,
+        win_rate=data.win_rate
+    )
+    
+    print(f"[EMOTION] {data.entity_id}: {new_emotion.value} (intensity: {emotion.emotion_intensity:.2f})")
+    
+    return {
+        "emotion": new_emotion.value,
+        "intensity": emotion.emotion_intensity,
+        "modifiers": emotion.get_emotion_modifiers()
+    }
+
+@app.get("/cognitive/energy/{entity_id}")
+async def get_energy_status(entity_id: str):
+    """Get entity energy status"""
+    if entity_id not in energy_systems:
+        energy_systems[entity_id] = EnergySystem()
+    
+    energy = energy_systems[entity_id]
+    return energy.get_status()
+
+@app.post("/cognitive/energy/{entity_id}/rest")
+async def rest_entity(entity_id: str):
+    """Entity rests to recover energy"""
+    if entity_id not in energy_systems:
+        energy_systems[entity_id] = EnergySystem()
+    
+    energy = energy_systems[entity_id]
+    energy.rest()
+    
+    return {
+        "success": True,
+        "energy": energy.get_status()
+    }
+
+@app.get("/cognitive/market")
+async def get_cognitive_market():
+    """Get current market state from cognitive environment"""
+    if not COGNITIVE_AVAILABLE or not market_env:
+        return {"error": "Market environment not available"}
+    
+    return market_env.get_state_dict()
+
+@app.post("/cognitive/market/update")
+async def update_cognitive_market(actions: List[Dict] = None):
+    """Update market based on agent actions"""
+    if not COGNITIVE_AVAILABLE or not market_env:
+        return {"error": "Market environment not available"}
+    
+    market_env.update(actions or [])
+    
+    return market_env.get_state_dict()

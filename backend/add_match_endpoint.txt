@@ -1,0 +1,32 @@
+
+# Add this after the @app.post("/entities/{node_id}/train") endpoint:
+
+@app.post("/match")
+async def simulate_match(data: MatchRequest):
+    """Simulate a match between two entities"""
+    if data.entity_a_id not in active_entities or data.entity_b_id not in active_entities:
+        return {"error": "One or both entities not found"}
+    
+    entity_a = active_entities[data.entity_a_id]
+    entity_b = active_entities[data.entity_b_id]
+    
+    try:
+        result = engine.smart_match(entity_a["entity_id"], entity_b["entity_id"])
+        
+        # Update both entities with new brain data
+        for node_id in [data.entity_a_id, data.entity_b_id]:
+            entity_data = active_entities[node_id]
+            brain_data = parse_entity_data(entity_data["entity_id"])
+            entity_data.update(brain_data)
+            await broadcast_entity_update(node_id, entity_data)
+        
+        print(f"[MATCH] {entity_a['name']} vs {entity_b['name']} - Winner: {result.get('winner', 'N/A')}")
+        
+        return {
+            "result": result,
+            "entity_a": active_entities[data.entity_a_id],
+            "entity_b": active_entities[data.entity_b_id]
+        }
+    except Exception as e:
+        print(f"[ERROR] Match failed: {e}")
+        return {"error": str(e)}

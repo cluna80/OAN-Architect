@@ -1,0 +1,38 @@
+
+# Add this AFTER the @app.post("/entities/{node_id}/chat") endpoint
+
+@app.post("/entities/conversation")
+async def entity_conversation(data: ConversationRequest):
+    """Two entities have a conversation"""
+    if data.entity_a_id not in active_entities or data.entity_b_id not in active_entities:
+        return {"error": "One or both entities not found"}
+    
+    entity_a = active_entities[data.entity_a_id]
+    entity_b = active_entities[data.entity_b_id]
+    
+    # Simple conversation without Ollama for now
+    return {
+        "topic": data.topic,
+        "conversation": [
+            {
+                "entity_id": data.entity_a_id,
+                "entity": entity_a["name"],
+                "message": f"I'm {entity_a['name']} with {entity_a['wins']}W-{entity_a['losses']}L",
+                "stats": {
+                    "confidence": entity_a["confidence"],
+                    "wins": entity_a["wins"],
+                    "losses": entity_a["losses"]
+                }
+            },
+            {
+                "entity_id": data.entity_b_id,
+                "entity": entity_b["name"],
+                "message": f"I'm {entity_b['name']} with {entity_b['wins']}W-{entity_b['losses']}L",
+                "stats": {
+                    "confidence": entity_b["confidence"],
+                    "wins": entity_b["wins"],
+                    "losses": entity_b["losses"]
+                }
+            }
+        ]
+    }

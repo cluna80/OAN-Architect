@@ -1,0 +1,50 @@
+# ============================================================================
+# WEBSOCKET
+# ============================================================================
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket for real-time updates"""
+    await websocket.accept()
+    active_connections.append(websocket)
+    
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        active_connections.remove(websocket)
+
+async def broadcast_entity_update(node_id: str, entity_data: dict):
+    """Broadcast entity update to all connected clients"""
+    message = json.dumps({
+        "type": "entity_update",
+        "node_id": node_id,
+        "data": entity_data
+    }, default=str)
+    
+    disconnected = []
+    for connection in active_connections:
+        try:
+            await connection.send_text(message)
+        except:
+            disconnected.append(connection)
+    
+    for conn in disconnected:
+        if conn in active_connections:
+            active_connections.remove(conn)
+
+if __name__ == "__main__":
+    import uvicorn
+    print("\n" + "="*60)
+    print("  OAN ARCHITECT BACKEND API + OLLAMA")
+    print("="*60)
+    print(f"  OAN Engine: {'✅ Available' if OAN_AVAILABLE else '❌ Not Available'}")
+    print(f"  Server: http://0.0.0.0:8000")
+    print(f"  Docs: http://0.0.0.0:8000/docs")
+    print("="*60 + "\n")
+    print("NEW OLLAMA ENDPOINTS:")
+    print("  POST /entities/{id}/chat - Talk to entity")
+    print("  POST /entities/{id}/analyze_opponent/{id} - Pre-match analysis")
+    print("  POST /entities/conversation - Entity-to-entity chat")
+    print("="*60 + "\n")
+    uvicorn.run(app, host="0.0.0.0", port=8000)
