@@ -1,0 +1,24 @@
+FIND THIS in src/App.tsx:
+
+  const loadTemplate = (template: any) => {
+    setNodes(template.nodes);
+    setEdges(template.edges);
+  };
+
+REPLACE WITH:
+
+  const loadTemplate = async (template: any) => {
+    // Clear old trading sessions for fresh start
+    try {
+      const res = await fetch('http://localhost:8000/trading/sessions/clear', {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      console.log('[DEMO] Cleared', data.cleared, 'old trading sessions');
+    } catch (e) {
+      console.error('[DEMO] Failed to clear sessions:', e);
+    }
+    
+    setNodes(template.nodes);
+    setEdges(template.edges);
+  };

@@ -15,6 +15,7 @@ import asyncio
 import re
 import requests
 import random
+from market_data_live import binance_feed
 
 # Add OAN Protocol to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "ObsidianArcadia"))
@@ -44,7 +45,13 @@ active_connections: List[WebSocket] = []
 
 # Trading state
 trading_sessions = {}
-current_price = 52000.0
+# Initialize from Binance
+try:
+    current_price = binance_feed.get_current_price()
+    print(f"[MARKET] Initialized price from Binance: ${current_price:,.2f}")
+except:
+    current_price = 52000.0
+    print("[MARKET] Using default price: $52,000")
 
 # Ollama Configuration
 OLLAMA_URL = "http://localhost:11434/api/generate"
@@ -311,16 +318,31 @@ Respond naturally about your relationship and experiences."""
 # TRADING
 @app.get("/trading/market")
 async def get_market():
-    global current_price
-    current_price *= (1 + random.uniform(-0.02, 0.02))
-    return {
-        "price": round(current_price, 2),
-        "change": random.uniform(-5, 5),
-        "volume": random.randint(1000000, 10000000)
-    }
+    """Get REAL market data from Binance"""
+    try:
+        stats = binance_feed.get_24h_stats()
+        return {
+            "price": round(stats['price'], 2),
+            "change": round(stats['change_percent'], 2),
+            "volume": int(stats['volume_24h']),
+            "high_24h": round(stats['high_24h'], 2),
+            "low_24h": round(stats['low_24h'], 2),
+            "source": "Binance Live"
+        }
+    except Exception as e:
+        # Fallback to simulation if API fails
+        global current_price
+        current_price *= (1 + random.uniform(-0.02, 0.02))
+        return {
+            "price": round(current_price, 2),
+            "change": random.uniform(-5, 5),
+            "volume": random.randint(1000000, 10000000),
+            "source": "Simulation"
+        }
 
 @app.post("/trading/start/{agent_id}")
 async def trading_start(agent_id: str):
+    # ALWAYS reset to fresh $10,000 (even if session exists)
     trading_sessions[agent_id] = {
         "balance": 10000,
         "position": None,
@@ -328,8 +350,8 @@ async def trading_start(agent_id: str):
         "wins": 0,
         "profit": 0
     }
-    print(f"[TRADING] Started: {agent_id}")
-    return {"success": True}
+    print(f"[TRADING] Started: {agent_id} with $10,000")
+    return {"success": True, "balance": 10000}
 
 @app.post("/trading/auto/{agent_id}")
 async def trading_auto(agent_id: str, confidence: float = 0.5):
@@ -337,7 +359,11 @@ async def trading_auto(agent_id: str, confidence: float = 0.5):
         return {"success": False}
     
     session = trading_sessions[agent_id]
-    price = current_price * (1 + random.uniform(-0.01, 0.01))
+    # Use REAL Binance price
+    try:
+        price = binance_feed.get_current_price()
+    except:
+        price = current_price * (1 + random.uniform(-0.01, 0.01))
     
     if session["position"] is None:
         session["position"] = {"price": price, "amount": 0.05}
@@ -694,6 +720,15 @@ async def get_active_sessions():
                 "profit": data.get("profit", 0)
             })
     return {"sessions": active}
+
+
+@app.delete("/trading/sessions/clear")
+async def clear_all_sessions():
+    """Clear all trading sessions - fresh start"""
+    count = len(trading_sessions)
+    trading_sessions.clear()
+    print(f"[TRADING] Cleared {count} trading sessions")
+    return {"success": True, "cleared": count}
 
 if __name__ == "__main__":
     import uvicorn

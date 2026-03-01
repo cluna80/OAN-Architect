@@ -11,7 +11,18 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({ onClose }) =
   const { setNodes, setEdges } = useGraphStore();
   const templates = getTemplateList();
 
-  const loadTemplate = (templateKey: string) => {
+  const loadTemplate = async (templateKey: string) => {
+    // Clear all old trading sessions for fresh demo
+    try {
+      const res = await fetch('http://localhost:8000/trading/sessions/clear', {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      console.log('[DEMO] Cleared', data.cleared, 'old trading sessions');
+    } catch (e) {
+      console.error('[DEMO] Failed to clear sessions:', e);
+    }
+    
     const template = getTemplate(templateKey);
     if (template) {
       setNodes(template.nodes);
