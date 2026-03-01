@@ -2,11 +2,10 @@ import { useState, useEffect } from 'react';
 import { Handle, Position } from 'reactflow';
 import { Bot, Play, Square, TrendingUp, TrendingDown } from 'lucide-react';
 import { useGraphStore } from '../../stores/useGraphStore';
+import { tradingManager } from '../../services/tradingSessionManager';
 
 export const TradingAgentNode = ({ data, selected, id }: any) => {
   const { updateNodeData, nodes } = useGraphStore();
-  const [isTrading, setIsTrading] = useState(false);
-  const [tradingInterval, setTradingInterval] = useState<NodeJS.Timeout | null>(null);
 
   const isActive = data.isActive || false;
   const strategy = data.strategy || 'Market Making';
@@ -15,132 +14,87 @@ export const TradingAgentNode = ({ data, selected, id }: any) => {
   const profit = data.profit || 0;
 
   const handleStart = async () => {
-    console.log('íº€ Starting trading session...');
+    console.log('íº€ Starting:', id);
     
-    // Start trading session on backend
     try {
+      // Start backend session
       const response = await fetch(`http://localhost:8000/trading/start/${id}`, {
         method: 'POST'
       });
       const result = await response.json();
       
       if (result.success) {
-        console.log('âœ… Trading session started!');
-        updateNodeData(id, { isActive: true });
-        setIsTrading(true);
-
-        // Start trading loop - execute trade every 3 seconds
-        const interval = setInterval(async () => {
-          await executeTrade();
-        }, 3000);
-
-        setTradingInterval(interval);
-      }
-    } catch (error) {
-      console.error('âŒ Failed to start trading:', error);
-      alert('Failed to start trading. Is backend running on port 8000?');
-    }
-  };
-
-  const handleStop = async () => {
-    console.log('í»‘ Stopping trading session...');
-    
-    if (tradingInterval) {
-      clearInterval(tradingInterval);
-      setTradingInterval(null);
-    }
-
-    updateNodeData(id, { isActive: false });
-    setIsTrading(false);
-    
-    // Get final stats
-    await updateStats();
-  };
-
-  const executeTrade = async () => {
-    try {
-      // Get entity confidence
-      const connectedEntity = nodes.find(n => n.type === 'entity' && n.data.oan_entity_id);
-      const confidence = connectedEntity ? (connectedEntity.data.reputation || 50) / 100 : 0.5;
-
-      // Execute auto trade
-      const response = await fetch(`http://localhost:8000/trading/auto/${id}?confidence=${confidence}`, {
-        method: 'POST'
-      });
-      const result = await response.json();
-
-      if (result.success) {
-        console.log(`í³Š ${result.action} @ $${result.price}`);
+        console.log('âœ… Session started!');
         
-        // Update stats
-        if (result.stats) {
+        // Update node state
+        updateNodeData(id, { isActive: true });
+
+        // Use TradingSessionManager (prevents duplicate intervals)
+        tradingManager.start(id, (stats) => {
+          // Update this node
           updateNodeData(id, {
-            winRate: result.stats.win_rate,
-            totalTrades: result.stats.trades,
-            profit: result.stats.profit
+            winRate: stats.win_rate,
+            totalTrades: stats.trades,
+            profit: stats.profit
           });
 
-          // Update wallet
+          // Update connected wallet
           const wallet = nodes.find(n => n.type === 'wallet');
           if (wallet) {
             updateNodeData(wallet.id, {
-              balance: result.stats.balance,
-              profit: result.stats.profit,
-              trades: result.stats.trades
+              balance: stats.balance,
+              profit: stats.profit,
+              trades: stats.trades
             });
           }
-        }
-
-        // Update market price
-        const marketResponse = await fetch('http://localhost:8000/trading/market');
-        const marketData = await marketResponse.json();
-        
-        const market = nodes.find(n => n.type === 'marketData');
-        if (market) {
-          updateNodeData(market.id, {
-            price: marketData.price,
-            change: marketData.change,
-            volume: marketData.volume
-          });
-        }
+        }, 0.5);
       }
     } catch (error) {
-      console.error('âŒ Trade execution error:', error);
+      console.error('âŒ Failed to start:', error);
+      alert('Backend not running on port 8000?');
     }
   };
 
-  const updateStats = async () => {
-    try {
-      const response = await fetch(`http://localhost:8000/trading/stats/${id}`);
-      const stats = await response.json();
-      
-      updateNodeData(id, {
-        winRate: stats.win_rate,
-        totalTrades: stats.trades,
-        profit: stats.profit
-      });
-
-      // Update wallet
-      const wallet = nodes.find(n => n.type === 'wallet');
-      if (wallet) {
-        updateNodeData(wallet.id, {
-          balance: stats.balance,
-          profit: stats.profit,
-          trades: stats.trades
-        });
-      }
-    } catch (error) {
-      console.error('Failed to update stats:', error);
-    }
+  const handleStop = () => {
+    console.log('í»‘ Stopping:', id);
+    
+    // Stop the trading manager
+    tradingManager.stop(id);
+    
+    // Update node state
+    updateNodeData(id, { isActive: false });
   };
 
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (tradingInterval) {
-        clearInterval(tradingInterval);
+      if (isActive) {
+        tradingManager.stop(id);
       }
     };
-  }, [tradingInterval]);
+  }, []);
+
+  // Update callback if component re-renders while active
+  useEffect(() => {
+    if (isActive) {
+      tradingManager.updateCallback(id, (stats) => {
+        updateNodeData(id, {
+          winRate: stats.win_rate,
+          totalTrades: stats.trades,
+          profit: stats.profit
+        });
+
+        const wallet = nodes.find(n => n.type === 'wallet');
+        if (wallet) {
+          updateNodeData(wallet.id, {
+            balance: stats.balance,
+            profit: stats.profit,
+            trades: stats.trades
+          });
+        }
+      });
+    }
+  }, [isActive, id, nodes]);
 
   return (
     <div className={`px-4 py-3 shadow-lg rounded-md bg-[#0a0a1f] border-2 transition-all duration-300 ${
@@ -155,7 +109,7 @@ export const TradingAgentNode = ({ data, selected, id }: any) => {
       <div className="flex flex-col gap-2 min-w-[200px]">
         <div className="flex items-center justify-between border-b border-white/10 pb-1">
           <span className="text-[10px] font-mono text-[#8b5cf6] uppercase tracking-wider">
-            {isActive ? 'í¿¢ LIVE TRADING' : 'âš« INACTIVE'}
+            {isActive ? 'í²Ží²Ží²Ž LIVE TRADING' : 'âš« INACTIVE'}
           </span>
           <Bot className={`w-4 h-4 ${isActive ? 'text-[#8b5cf6] animate-pulse' : 'text-gray-500'}`} />
         </div>
@@ -192,8 +146,7 @@ export const TradingAgentNode = ({ data, selected, id }: any) => {
             {!isActive ? (
               <button 
                 onClick={handleStart}
-                disabled={isTrading}
-                className="flex-1 px-2 py-1 text-[9px] font-mono uppercase bg-[#10b981]/20 hover:bg-[#10b981]/30 text-[#10b981] rounded transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                className="flex-1 px-2 py-1 text-[9px] font-mono uppercase bg-[#10b981]/20 hover:bg-[#10b981]/30 text-[#10b981] rounded transition-colors flex items-center justify-center gap-1"
               >
                 <Play className="w-3 h-3" />
                 START
